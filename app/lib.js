@@ -18,9 +18,30 @@ function parseCode(url) {
   return m[1];
 }
 
-// 開無頭 Chromium 載入貼文，回傳主貼文（不含留言）裡所有 Giphy ID，順序即貼文排列順序
+// 依序嘗試可用的瀏覽器：附帶的 Chromium → 系統 Edge → 系統 Chrome → Playwright 預設
+async function launchBrowser() {
+  const candidates = [];
+  if (process.env.PLAYWRIGHT_BROWSERS_PATH) candidates.push({ label: '附帶的 Chromium', opts: {} });
+  candidates.push({ label: 'Microsoft Edge', opts: { channel: 'msedge' } });
+  candidates.push({ label: 'Google Chrome', opts: { channel: 'chrome' } });
+  candidates.push({ label: 'Playwright Chromium', opts: {} });
+
+  const errors = [];
+  for (const c of candidates) {
+    try {
+      const browser = await chromium.launch(c.opts);
+      console.error(`[browser] 使用 ${c.label}`);
+      return browser;
+    } catch (e) {
+      errors.push(`${c.label}: ${String(e.message).split(String.fromCharCode(10))[0]}`);
+    }
+  }
+  throw new Error('找不到可用的瀏覽器（需要 Microsoft Edge 或 Google Chrome）: ' + errors.join(' / '));
+}
+
+// 開無頭瀏覽器載入貼文，回傳主貼文（不含留言）裡所有 Giphy ID，順序即貼文排列順序
 async function extractIds(url, code) {
-  const browser = await chromium.launch();
+  const browser = await launchBrowser();
   const page = await browser.newPage({ userAgent: UA, viewport: { width: 1280, height: 900 } });
   try {
     await page.goto(String(url).split('?')[0], { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -102,4 +123,4 @@ async function downloadAll(ids, outDir, size, onProgress, concurrency = 6) {
   return { ok, bytes, failed, names };
 }
 
-module.exports = { UA, SIZE_URL, parseCode, extractIds, downloadOne, downloadAll };
+module.exports = { UA, SIZE_URL, parseCode, launchBrowser, extractIds, downloadOne, downloadAll };
