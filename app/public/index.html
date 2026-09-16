@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Threads GIF 下載器</title>
+<style>
+  :root{
+    --bg:#f5f5f7; --card:#fff; --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#111; --ok:#16a34a; --err:#dc2626;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d0d0f; --card:#17171a; --fg:#f2f2f4; --muted:#9ca3af; --line:#2a2a30;
+      --accent:#f2f2f4; --ok:#4ade80; --err:#f87171;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif;
+       display:flex;justify-content:center;padding:32px 16px}
+  .wrap{width:100%;max-width:760px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .row{display:flex;gap:8px}
+  input[type=url]{flex:1;min-width:0;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
+       background:transparent;color:var(--fg);font-size:14px}
+  input[type=url]:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  button{padding:11px 20px;border:0;border-radius:9px;background:var(--accent);color:var(--card);
+       font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .sizes{display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--muted);flex-wrap:wrap;align-items:center}
+  .sizes label{display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--fg)}
+  .status{margin-top:16px;font-size:14px;min-height:22px}
+  .bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:10px;display:none}
+  .bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .18s}
+  .thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;max-height:270px;overflow-y:auto}
+  .thumbs img{width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+  .done{display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .done a,.done button{margin-right:8px}
+  .done a{display:inline-block;padding:9px 14px;border:1px solid var(--line);border-radius:9px;
+       color:var(--fg);text-decoration:none;font-size:13px}
+  .path{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted);margin-top:10px;word-break:break-all}
+  .err{color:var(--err)}
+  .note{color:var(--muted);font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Threads GIF 下載器</h1>
+  <p class="sub">貼上 Threads 貼文網址，自動抓下該貼文內嵌的所有 GIF（不含留言）。</p>
+
+  <div class="card">
+    <form class="row" id="f">
+      <input type="url" id="url" required placeholder="https://www.threads.com/@someone/post/XXXXXXXX">
+      <button id="go">下載</button>
+    </form>
+    <div class="sizes">
+      尺寸：
+      <label><input type="radio" name="size" value="orig" checked> 原圖</label>
+      <label><input type="radio" name="size" value="200"> 200px</label>
+      <label><input type="radio" name="size" value="100"> 100px</label>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="thumbs" id="thumbs"></div>
+
+    <div class="done" id="done">
+      <button id="openBtn">開資料夾</button>
+      <a id="zipLink" download>下載 zip</a>
+      <a id="sheetLink" target="_blank">總覽圖</a>
+      <div class="path" id="path"></div>
+    </div>
+  </div>
+
+  <p class="note">原圖平均約 0.8 MB／張，一篇百來張的貼文約需 1～2 分鐘。同一時間只能跑一個任務。</p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtMB = (b) => (b / 1048576).toFixed(1) + ' MB';
+
+$('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = $('url').value.trim();
+  const size = document.querySelector('input[name=size]:checked').value;
+
+  $('go').disabled = true;
+  $('thumbs').innerHTML = '';
+  $('done').style.display = 'none';
+  $('bar').style.display = 'none';
+  $('bar').firstElementChild.style.width = '0';
+  $('status').className = 'status';
+  $('status').textContent = '正在開啟貼文…（第一次會慢一點）';
+
+  let r;
+  try {
+    r = await (await fetch('/api/download', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, size }),
+    })).json();
+  } catch { r = { error: '無法連線到本機伺服器' }; }
+
+  if (r.error) { fail(r.error); return; }
+
+  const es = new EventSource('/api/events/' + r.jobId);
+  es.onmessage = (m) => {
+    const d = JSON.parse(m.data);
+    if (d.type === 'found') {
+      $('status').textContent = `找到 ${d.total} 個 GIF，開始下載…`;
+      $('bar').style.display = 'block';
+    } else if (d.type === 'progress') {
+      $('status').textContent = `下載中 ${d.done} / ${d.total}` + (d.failed ? `（失敗 ${d.failed}）` : '');
+      $('bar').firstElementChild.style.width = (d.done / d.total * 100) + '%';
+      const img = new Image(); img.src = d.file; img.loading = 'lazy';
+      $('thumbs').appendChild(img);
+    } else if (d.type === 'postprocess') {
+      $('status').textContent = d.step === 'zip' ? '打包 zip 中…' : '產生總覽圖中…';
+    } else if (d.type === 'done') {
+      $('status').innerHTML = `<b>✓ 完成 ${d.ok} / ${d.total}</b> · ${fmtMB(d.bytes)}`;
+      $('bar').firstElementChild.style.width = '100%';
+      $('zipLink').href = d.zip;
+      $('sheetLink').href = d.sheet || '#';
+      $('sheetLink').style.display = d.sheet ? '' : 'none';
+      $('path').textContent = d.dir;
+      $('openBtn').onclick = () => fetch('/api/open', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: d.dir }),
+      });
+      $('done').style.display = 'block';
+      $('go').disabled = false;
+      es.close();
+    } else if (d.type === 'error') {
+      fail(d.message); es.close();
+    }
+  };
+  es.onerror = () => { es.close(); $('go').disabled = false; };
+});
+
+function fail(msg) {
+  $('status').className = 'status err';
+  $('status').textContent = '✕ ' + msg;
+  $('go').disabled = false;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# 抓下來的 GIF / 打包檔（屬於原作者，不要上傳）
+downloads/
+*.zip
+
+# 相依套件
+app/node_modules/
+
+# 建置產物（exe 以 GitHub Release 發布，不進版控）
+*.exe
+*.pdb
+
+# 可攜版用的執行檔與瀏覽器
+app/runtime/
+ms-playwright/
+
+# 雜項
+*.log
+.DS_Store
+Thumbs.db

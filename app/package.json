@@ -1,0 +1,23 @@
+{
+  "name": "threads-gif-downloader",
+  "version": "1.0.0",
+  "description": "貼上 Threads 貼文網址，下載該貼文內嵌的所有 GIF",
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node get-thread-gif.js"
+  },
+  "keywords": [
+    "threads",
+    "giphy",
+    "gif",
+    "downloader"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "playwright": "^1.63.0",
+    "sharp": "^0.35.4"
+  }
+}
