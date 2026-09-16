@@ -10,51 +10,45 @@ Threads 貼文裡的 GIF 多半是 Giphy 貼圖，而且一篇可能內嵌上百
 
 ![Threads GIF 下載器操作畫面](docs/screenshot.gif)
 
-## 需求
+## 使用方式
 
-- [Node.js](https://nodejs.org) 18 以上
-- Windows（圖形介面的啟動程式是 Windows 專用；CLI 跨平台）
+### 免安裝版（推薦，不需要安裝 Node.js）
 
-## 安裝
+到 [Releases](../../releases) 下載 `ThreadsGIF-Downloader-portable.zip`，
+**解壓縮後雙擊裡面的 exe** 就能用。Node.js 已經包在裡面，不必另外安裝任何東西。
+
+程式會常駐在系統列（右下角），瀏覽器自動開啟操作介面。
+右鍵系統列圖示可以開啟介面、開啟下載資料夾，或結束程式。
+
+需求：Windows 10/11（64 位元），以及 **Microsoft Edge 或 Google Chrome** 其中之一
+—— Windows 10/11 內建 Edge，一般不用特別處理。
+
+> 執行檔沒有程式碼簽章，Windows SmartScreen 會攔一次
+> （點「其他資訊」→「仍要執行」）。
+
+### 從原始碼執行
 
 ```bash
 cd app
 npm install
-npx playwright install chromium
-```
-
-## 使用方式
-
-### 圖形介面
-
-```bash
-cd app
 npm start
 ```
 
 瀏覽器會自動開啟 `http://127.0.0.1:5123`。貼上網址、選尺寸、按下載。
 
-Windows 使用者也可以到 [Releases](../../releases) 下載啟動程式（`.exe`），
-放在 `app/` 資料夾的**上一層**（也就是和 `app/` 並排），雙擊即可。
-exe 的檔名可以自己改，程式只認旁邊有沒有 `app/` 資料夾：
+預設會使用系統上的 Edge 或 Chrome；想改用 Playwright 自己的 Chromium
+就執行 `npx playwright install chromium`。
+
+啟動程式想自己編譯的話，用 Windows 內建的編譯器即可，不需安裝任何開發工具：
 
 ```
-你的資料夾/
-├── 任意檔名.exe   ← 從 Release 下載的啟動程式
-├── app/           ← 從本 repo clone 下來、並已 npm install
-└── downloads/     ← 執行後自動建立
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe -nologo -target:winexe ^
+  -optimize+ -r:System.Drawing.dll -r:System.Windows.Forms.dll ^
+  -out:"Threads GIF 下載器.exe" app\launcher\Launcher.cs
 ```
 
-程式會常駐在系統列（右下角），右鍵可開啟介面、開啟下載資料夾或結束。
-
-> 這個 exe 沒有程式碼簽章，Windows SmartScreen 會攔一次
-> （「其他資訊」→「仍要執行」）。想自己編譯的話，用 Windows 內建的編譯器即可：
->
-> ```
-> C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe -nologo -target:winexe ^
->   -optimize+ -r:System.Drawing.dll -r:System.Windows.Forms.dll ^
->   -out:"Threads GIF 下載器.exe" app\launcher\Launcher.cs
-> ```
+編好的 exe 要放在 `app/` 資料夾的**上一層**（和 `app/` 並排）。
+檔名可以自己改，程式只認旁邊有沒有 `app/` 資料夾。
 
 ### 命令列
 
@@ -77,7 +71,9 @@ downloads/<貼文代碼>/
 ## 運作方式
 
 Threads 的貼文內容是前端動態載入的，匿名 `curl` 只會拿到登入頁，
-所以這裡用 Playwright 開無頭 Chromium 讀渲染後的 DOM。
+所以這裡用 Playwright 開無頭瀏覽器讀渲染後的 DOM。
+瀏覽器會依序嘗試：附帶的 Chromium → 系統的 Edge → 系統的 Chrome → Playwright 預設，
+因此免安裝版不需要另外下載 Chromium（省下約 270 MB）。
 
 定位主貼文的方式：找到指向該貼文的時間戳連結，往上取「還沒包含其他貼文連結」
 的最大祖先節點 —— 這樣就能精準圈出主貼文而排除所有留言。
