@@ -43,8 +43,18 @@ npm start
 
 瀏覽器會自動開啟 `http://127.0.0.1:5123`。貼上網址、選尺寸、按下載。
 
-Windows 使用者也可以到 [Releases](../../releases) 下載 `Threads GIF 下載器.exe`，
-和 `app/` 資料夾放在一起，雙擊即可。程式會常駐在系統列，右鍵可開啟介面或結束。
+Windows 使用者也可以到 [Releases](../../releases) 下載啟動程式（`.exe`），
+放在 `app/` 資料夾的**上一層**（也就是和 `app/` 並排），雙擊即可。
+exe 的檔名可以自己改，程式只認旁邊有沒有 `app/` 資料夾：
+
+```
+你的資料夾/
+├── 任意檔名.exe   ← 從 Release 下載的啟動程式
+├── app/           ← 從本 repo clone 下來、並已 npm install
+└── downloads/     ← 執行後自動建立
+```
+
+程式會常駐在系統列（右下角），右鍵可開啟介面、開啟下載資料夾或結束。
 
 > 這個 exe 沒有程式碼簽章，Windows SmartScreen 會攔一次
 > （「其他資訊」→「仍要執行」）。想自己編譯的話，用 Windows 內建的編譯器即可：
