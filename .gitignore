@@ -17,3 +17,9 @@ ms-playwright/
 *.log
 .DS_Store
 Thumbs.db
+
+# 建置產物
+dist/
+
+# 開發用截圖原始檔
+infor.gif

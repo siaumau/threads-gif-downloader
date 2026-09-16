@@ -50,6 +50,21 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe -nologo -target:winexe ^
 編好的 exe 要放在 `app/` 資料夾的**上一層**（和 `app/` 並排）。
 檔名可以自己改，程式只認旁邊有沒有 `app/` 資料夾。
 
+### 自行建置免安裝版
+
+```powershell
+.\build-portable.ps1
+```
+
+會自動編譯啟動程式、複製 `node.exe` 與精簡過的相依套件，產出：
+
+```
+dist/ThreadsGIF-Downloader-portable/      解壓後的樣子（約 136 MB）
+dist/ThreadsGIF-Downloader-portable.zip   要上傳到 Release 的檔案（約 48 MB）
+```
+
+前置條件：已安裝 Node.js，且 `app/` 內已執行過 `npm install`。
+
 ### 命令列
 
 ```bash
